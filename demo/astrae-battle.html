@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>전투 버튼 액션 프로토타입 · 아스트라에 오라티오 역기획 | 박세훈 포트폴리오</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#05060f;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center;
+  font-family:'Pretendard Variable',Pretendard,-apple-system,'Malgun Gothic',sans-serif;color:#fff;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+
+/* 무대 : 원본 캡처 2000×923 비율 고정. 1cqw = 원본 20px */
+.stage{position:relative;width:min(100vw,calc(100vh * 2000 / 923));aspect-ratio:2000/923;
+  container-type:size;overflow:hidden;background:#0b0d1f url(astrae/bg.jpg) center/100% 100% no-repeat}
+.stage.shake{animation:shake .32s}
+@keyframes shake{20%{transform:translate(-.4cqw,.2cqw)}40%{transform:translate(.4cqw,-.2cqw)}60%{transform:translate(-.25cqw,.1cqw)}80%{transform:translate(.2cqw,0)}}
+.ab{position:absolute}
+button{all:unset;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:.15cqw solid #fff;outline-offset:.2cqw;border-radius:50%}
+
+/* ── 시스템 버튼 ── */
+.sys{top:2.2%;left:1.6%;display:flex;gap:2.6cqw;align-items:center}
+.sys button{width:2.8cqw;height:2.8cqw;display:grid;place-items:center;position:relative}
+.sys svg{width:100%;height:100%;fill:none;stroke:#fff;stroke-width:2.2;opacity:.92}
+.sys .lock{position:absolute;right:-.3cqw;top:-.4cqw;width:1.2cqw;height:1.2cqw;border-radius:50%;background:#fff;display:grid;place-items:center}
+.sys .lock svg{width:.8cqw;height:.8cqw;stroke:#111;stroke-width:3}
+.sys .spd{font-size:1.1cqw;font-weight:800;font-style:italic;position:absolute;right:-1.3cqw;bottom:-.2cqw}
+
+/* ── 적 HUD ── */
+.en-face{left:36.45%;top:4.77%;width:3.2cqw;height:3.2cqw;border-radius:50%;box-shadow:0 0 0 .12cqw rgba(255,255,255,.55)}
+.en-name{left:39.6%;width:21%;top:2.2%;text-align:center;font-size:1.25cqw;font-weight:700;text-shadow:0 .1cqw .3cqw #000}
+.en-attr{left:58%;top:2.82%;width:4.1cqw}
+.hp{left:39.6%;top:6.7%;width:21cqw;height:1.9cqw;background:rgba(10,8,20,.75);border:.1cqw solid rgba(255,255,255,.65);
+  transform:skewX(-8deg);overflow:hidden}
+.hp i{position:absolute;inset:0;right:auto;width:100%;background:linear-gradient(90deg,#e8505b,#f2a05b 70%,#f6c35a);transition:width .35s}
+.hp i.next{background:linear-gradient(90deg,#8a2f3a,#a86a38);z-index:-1}
+.hp b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.05cqw;font-weight:700;letter-spacing:.02em;transform:skewX(8deg);
+  text-shadow:0 0 .2cqw #000,0 0 .2cqw #000}
+.hp-x{left:57.6%;top:6.5%;font-size:1.45cqw;font-weight:800;font-style:italic;color:#fff;text-shadow:0 0 .25cqw #000}
+.hp-line{left:39.6%;top:9.9%;width:21cqw;height:.28cqw;background:#fff;opacity:.9}
+.guard{left:34.1%;top:5.6%;width:1.5cqw;opacity:0;transition:opacity .2s}
+.guard.on{opacity:1}
+
+/* 행동 예고 타임라인 */
+.tl{left:39.9%;top:12.8%;width:20.2cqw;height:1.6cqw}
+.tl .line{position:absolute;left:0;right:0;top:50%;border-top:.12cqw dotted rgba(255,255,255,.45)}
+.tl img,.tl .slot{position:absolute;top:0;width:1.35cqw;height:1.35cqw;margin-left:-.68cqw}
+.tl .slot.done{opacity:.25}
+.tl .cur{position:absolute;top:-.35cqw;width:.14cqw;height:2.1cqw;background:#fff;box-shadow:0 0 .4cqw #fff;margin-left:-.07cqw;transition:left .3s}
+.tl .end{position:absolute;right:-.5cqw;top:.15cqw;font-size:1cqw;color:rgba(255,255,255,.6)}
+
+/* 라운드 · 페이즈 */
+.rnd{left:45%;top:16.8%;width:10.1cqw;height:1.35cqw;display:flex;border-radius:.7cqw;overflow:hidden;border:.08cqw solid rgba(255,255,255,.35)}
+.rnd span{display:grid;place-items:center;font-size:.9cqw;font-weight:800;font-style:italic}
+.rnd .r{width:3.4cqw;background:#fff;color:#111;clip-path:polygon(0 0,100% 0,82% 100%,0 100%)}
+.rnd .p{flex:1;background:rgba(20,22,40,.85);letter-spacing:.04em}
+
+/* 알림 */
+.toast{left:50%;top:22%;transform:translateX(-50%);padding:.5cqw 1.4cqw;border-radius:.4cqw;background:rgba(8,10,24,.8);
+  border:.08cqw solid rgba(255,255,255,.25);font-size:1cqw;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s}
+.toast.on{opacity:1}
+
+/* 파티 · 출전 캐릭터 HP */
+.php{left:8.6%;top:92.3%;width:5.25cqw;height:.62cqw;background:#1b2a24;overflow:hidden}
+.php i{display:block;height:100%;width:100%;background:linear-gradient(#8fe38a,#4fbf5a);transition:width .35s}
+.counter-fx{left:5.8%;top:76%;width:7.4cqw;height:7.4cqw;border-radius:50%;border:.2cqw solid #bfe4ff;box-shadow:0 0 1cqw #8fd0f5;opacity:0;transition:opacity .2s}
+.counter-fx.on{animation:ctr .6s ease-out}
+@keyframes ctr{0%{opacity:1;transform:scale(.7)}100%{opacity:0;transform:scale(1.4)}}
+
+/* AP */
+.ap-stars{left:58.9%;top:91.3%;display:flex;gap:.35cqw}
+.ap-stars svg{width:1.95cqw;height:1.95cqw}
+.ap-stars path{fill:#f6d77a;stroke:#b98b2a;stroke-width:1;transition:fill .2s,opacity .2s}
+.ap-stars .off path{fill:#2a2c3e;stroke:#55576b}
+.ap-num{left:71.75%;top:89.7%;width:3cqw;height:3cqw;border-radius:50%;background:radial-gradient(#2a2213,#120e07);
+  border:.14cqw solid #d8b25a;display:grid;place-items:center;line-height:1}
+.ap-num small{position:absolute;top:-.6cqw;font-size:.85cqw;font-weight:800;font-style:italic;color:#f6d77a}
+.ap-num b{font-size:1.6cqw;font-weight:800;font-style:italic;color:#f6d77a}
+
+/* 행동 버튼 */
+.act{border-radius:50%;transition:transform .12s,filter .2s}
+.act img{display:block;width:100%;height:100%;border-radius:50%}
+.act:active{transform:scale(.92)}
+.act[aria-disabled="true"]{filter:grayscale(.8) brightness(.55)}
+.act .cd{position:absolute;inset:0;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--p,0) * 1%),transparent 0);pointer-events:none}
+.act .cdn{position:absolute;inset:0;display:grid;place-items:center;font-size:1.6cqw;font-weight:800;text-shadow:0 0 .3cqw #000}
+.b-wand{left:76.8%;top:83.2%;width:5.4cqw;height:5.4cqw}
+.b-ult{left:83.2%;top:71.5%;width:7.3cqw;height:7.3cqw}
+.b-gun{left:91.3%;top:63.7%;width:5.2cqw;height:5.2cqw}
+.b-gun.ready img{filter:brightness(1.45) saturate(1.2)}
+.b-shield{left:91.3%;top:83.2%;width:5.4cqw;height:5.4cqw}
+.b-shield.on{box-shadow:0 0 0 .2cqw #8fd0f5,0 0 1.2cqw #8fd0f5}
+.ult-ring{left:81.45%;top:67.8%;width:10.8cqw;height:10.8cqw;border-radius:50%;border:.1cqw solid rgba(255,255,255,.28);pointer-events:none}
+.ult-ring::after{content:"";position:absolute;inset:-.2cqw;border-radius:50%;
+  background:conic-gradient(#f6d77a calc(var(--g,0) * 1%),transparent 0);
+  -webkit-mask:radial-gradient(closest-side,transparent calc(100% - .35cqw),#000 calc(100% - .3cqw));mask:radial-gradient(closest-side,transparent calc(100% - .35cqw),#000 calc(100% - .3cqw))}
+.ult-lv{left:90.2%;top:75%;display:flex;flex-direction:column;gap:.55cqw;align-items:center}
+.ult-lv span{width:1.1cqw;height:1.1cqw;border-radius:50%;border:.1cqw solid rgba(255,255,255,.6);display:grid;place-items:center;
+  font-size:.62cqw;font-weight:800;color:rgba(255,255,255,.7);background:rgba(10,10,25,.6);font-family:serif}
+.ult-lv span.on{background:#f6d77a;color:#1a1404;border-color:#fff4c7;box-shadow:0 0 .5cqw #f6d77a}
+.b-ult.charged img{animation:glow 1.2s infinite}
+@keyframes glow{50%{filter:brightness(1.5) drop-shadow(0 0 .6cqw #f6d77a)}}
+
+/* 버튼 하이라이트
+   usable : 지금 누를 수 있는 버튼 — 옅은 금색 링
+   hint   : 지금 누르면 좋은 버튼 — 진한 링 + 빛 번짐 (카운터 타이밍 · 얼티메이트 Ⅲ)
+   flash  : 누른 순간의 섬광 */
+.act::before{content:"";position:absolute;inset:-.4cqw;border-radius:50%;border:.14cqw solid transparent;pointer-events:none;transition:border-color .2s,box-shadow .2s}
+.act.usable::before{border-color:rgba(246,215,122,.5);animation:ring 1.8s ease-in-out infinite}
+.act.usable:hover::before,.act.usable:focus-visible::before{border-color:#fff4c7;box-shadow:0 0 .9cqw rgba(246,215,122,.8)}
+.act.usable:hover img{filter:brightness(1.25)}
+.act.hint::before{border-color:#f6d77a;border-width:.2cqw;box-shadow:0 0 1.4cqw #f6d77a,inset 0 0 .8cqw rgba(246,215,122,.6);animation:ring .9s ease-in-out infinite}
+.act::after{content:"";position:absolute;inset:-20%;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(rgba(255,255,255,.95),rgba(246,215,122,.5) 35%,transparent 65%)}
+.act.flash::after{animation:flash .38s ease-out}
+@keyframes ring{50%{transform:scale(1.07);opacity:.55}}
+@keyframes flash{0%{opacity:1;transform:scale(.6)}100%{opacity:0;transform:scale(1.25)}}
+.tl .slot.next{transform:scale(1.35);filter:drop-shadow(0 0 .35cqw #fff);transition:transform .2s}
+.tl .slot{transition:transform .2s,opacity .2s}
+
+/* 방패 타이밍 : 적이 공격하는 동안 금빛(막을 수 있음) · 붉은빛(막을 수 없음) */
+.b-shield.timing{animation:timing .45s ease-in-out infinite}
+.b-shield.timing img{filter:brightness(1.35) sepia(.6) saturate(2.2) hue-rotate(-8deg)}
+.b-shield.timing::before{border-color:#ffe08a;border-width:.25cqw;box-shadow:0 0 1.8cqw #f6d77a,0 0 .6cqw #fff4c7,inset 0 0 1cqw rgba(246,215,122,.8)}
+@keyframes timing{50%{transform:scale(1.08)}}
+.b-shield.blocked::before{border-color:#ff6b6b;box-shadow:0 0 1cqw rgba(255,80,80,.7)}
+.b-shield.blocked img{filter:grayscale(.4) brightness(.8)}
+.b-shield[aria-disabled="true"]:not(.blocked){filter:none}
+.b-shield[aria-disabled="true"]:not(.blocked) img{filter:brightness(.8)}
+
+/* 툴팁 */
+.tip{position:absolute;z-index:6;width:max-content;max-width:19cqw;padding:.7cqw .9cqw .75cqw;border-radius:.4cqw;
+  background:rgba(8,10,24,.93);border:.08cqw solid rgba(246,215,122,.55);box-shadow:0 .4cqw 1.2cqw rgba(0,0,0,.5);
+  pointer-events:none;opacity:0;transform:translateY(.3cqw);transition:opacity .15s,transform .15s}
+.tip.on{opacity:1;transform:none}
+.tip b{display:flex;gap:.5cqw;align-items:center;font-size:1.05cqw;font-weight:700;color:#f6d77a;white-space:nowrap}
+.tip em{font-style:normal;font-size:.75cqw;font-weight:700;padding:.1cqw .45cqw;border-radius:.2cqw;background:rgba(246,215,122,.18);color:#fff4c7}
+.tip p{margin-top:.35cqw;font-size:.88cqw;line-height:1.55;color:rgba(255,255,255,.86);word-break:keep-all}
+
+/* 피해 숫자 */.dmg{position:absolute;font-weight:800;font-style:italic;pointer-events:none;white-space:nowrap;
+  text-shadow:0 0 .25cqw #000,0 0 .25cqw #000;animation:float .9s ease-out forwards}
+.dmg.en{font-size:2.1cqw;color:#fff}
+.dmg.crit{font-size:2.8cqw;color:#f6d77a}
+.dmg.pl{font-size:1.8cqw;color:#ff8a8a}
+.dmg.info{font-size:1.4cqw;color:#bfe4ff}
+@keyframes float{0%{opacity:0;transform:translate(-50%,0) scale(.7)}20%{opacity:1;transform:translate(-50%,-.8cqw) scale(1.08)}100%{opacity:0;transform:translate(-50%,-3.5cqw) scale(1)}}
+.hitfx{position:absolute;left:66.5%;top:52%;width:12cqw;height:12cqw;margin:-6cqw 0 0 -6cqw;border-radius:50%;pointer-events:none;
+  background:radial-gradient(rgba(255,255,255,.85),rgba(190,180,255,.35) 40%,transparent 70%);opacity:0}
+.hitfx.on{animation:hit .35s ease-out}
+@keyframes hit{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1.3)}}
+.hurt{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 6cqw rgba(255,40,60,.6);opacity:0}
+.hurt.on{animation:hurt .45s}
+@keyframes hurt{0%{opacity:1}100%{opacity:0}}
+
+/* 영지 선언 컷인 : 원본 컷인 캡처 사용 */
+.cutin{position:absolute;inset:0;background:url(../images/astrae/cutin.webp) center/100% 100% no-repeat;opacity:0;pointer-events:none;
+  clip-path:inset(50% 0 50% 0)}
+.cutin.on{animation:cut 1.9s ease forwards}
+@keyframes cut{0%{opacity:1;clip-path:inset(50% 0 50% 0)}14%{clip-path:inset(0 0 0 0)}84%{opacity:1;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+
+/* 일시정지 · 결과 */
+.veil{position:absolute;inset:0;background:rgba(5,6,18,.72);display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.4cqw}
+.veil.on{display:flex}
+.veil h2{font-size:2.6cqw;font-weight:800;letter-spacing:-.02em}
+.veil p{font-size:1.1cqw;color:rgba(255,255,255,.75)}
+.veil .row{display:flex;gap:1cqw}
+.veil button{padding:.8cqw 2cqw;border-radius:.5cqw;background:#fff;color:#111;font-size:1.1cqw;font-weight:700}
+.veil button.sub{background:rgba(255,255,255,.14);color:#fff}
+
+/* 튜토리얼 — 다른 시연 화면과 같은 구성 */
+.tut{position:fixed;inset:0;z-index:99999;pointer-events:auto;cursor:default;-webkit-user-select:none;user-select:none;
+  font-family:'Pretendard Variable',Pretendard,-apple-system,'Malgun Gothic',sans-serif}
+.tut__ring{position:absolute;border-radius:10px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,12,30,.66), 0 0 0 3px #3182f6;
+  transition:top .32s cubic-bezier(.22,1,.36,1),left .32s cubic-bezier(.22,1,.36,1),width .32s cubic-bezier(.22,1,.36,1),height .32s cubic-bezier(.22,1,.36,1)}
+.tut__pop{position:absolute;pointer-events:auto;width:min(360px,calc(100vw - 32px));padding:18px 20px 16px;
+  background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,12,30,.36);
+  transition:top .32s cubic-bezier(.22,1,.36,1),left .32s cubic-bezier(.22,1,.36,1)}
+.tut__no{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.06em;color:#3182f6}
+.tut__no i{flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:#3182f6}
+.tut__txt{margin:0;font-size:14px;line-height:1.72;color:#333d4b;word-break:keep-all}
+.tut__txt b{font-weight:700;color:#191f28}
+.tut__acts{display:flex;align-items:center;gap:8px;margin-top:16px}
+.tut__acts button{all:unset;height:36px;padding:0 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:-.01em}
+.tut__acts .tut__skip{margin-right:auto;color:#8b95a1}
+.tut__acts .tut__prev{background:#f2f4f6;color:#4e5968}
+.tut__prev[disabled]{opacity:.4;cursor:default}
+.tut__acts .tut__next{background:#3182f6;color:#fff}
+.tut__acts button[hidden]{display:none}
+.tut.is-act{pointer-events:none}
+.tut.is-act .tut__ring{box-shadow:0 0 0 9999px rgba(0,12,30,.58),0 0 0 3px #f6d77a,0 0 18px 4px rgba(246,215,122,.7);animation:tutpulse 1.1s ease-in-out infinite}
+@keyframes tutpulse{50%{box-shadow:0 0 0 9999px rgba(0,12,30,.58),0 0 0 5px #f6d77a,0 0 28px 8px rgba(246,215,122,.85)}}
+.tut__do{display:block;margin-top:8px;font-size:12.5px;font-weight:700;color:#b98b2a}
+.tut__do::before{content:"▶ "}
+.tut__hand{position:absolute;width:44px;height:44px;color:#fff;pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));
+  animation:tap 1.1s ease-in-out infinite}
+.tut__hand svg{width:100%;height:100%;fill:rgba(255,255,255,.95);stroke:#1a1a2e;stroke-width:1.2;stroke-linejoin:round}
+@keyframes tap{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-6px,-8px) scale(.92)}}
+.tut-open{position:fixed;right:16px;bottom:16px;z-index:9998;display:inline-flex;align-items:center;gap:7px;
+  height:38px;padding:0 15px;border-radius:999px;cursor:pointer;background:#3182f6;color:#fff;box-shadow:0 6px 18px rgba(49,130,246,.34);
+  font-size:13px;font-weight:700;letter-spacing:-.01em}
+.tut-open svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.tut:not([hidden]) ~ .tut-open{display:none}
+@media(max-width:640px){.tut__pop{width:calc(100vw - 24px);left:12px !important}}
+@media(prefers-reduced-motion:reduce){.tut__ring,.tut__pop{transition:none}.dmg,.cutin.on,.stage.shake{animation-duration:.01s}}
+</style>
+</head>
+<body>
+
+<main class="stage" id="stage" aria-label="전투 화면 프로토타입">
+
+  <!-- 시스템 -->
+  <div class="ab sys" id="sys">
+    <button type="button" id="bPause" aria-label="일시정지"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3.2"/></svg></button>
+    <button type="button" id="bAuto" aria-label="자동 전투 (잠김)">
+      <svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0113-5.1M19.5 12a7.5 7.5 0 01-13 5.1"/><path d="M10 9l5 3-5 3z" fill="#fff" stroke="none"/></svg>
+      <span class="lock"><svg viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="1.5"/><path d="M9 11V8a3 3 0 016 0v3"/></svg></span>
+    </button>
+    <button type="button" id="bSpeed" aria-label="배속"><svg viewBox="0 0 24 24"><path d="M8 5l10 7-10 7z" fill="#fff" stroke="none"/></svg><span class="spd" id="spdTx">x1</span></button>
+  </div>
+
+  <!-- 적 -->
+  <img class="ab en-face" src="astrae/enemy.png" alt="">
+  <p class="ab en-name">리빙 아머</p>
+  <img class="ab en-attr" src="astrae/enemy-attr.png" alt="속성 아이콘">
+  <img class="ab guard" id="guard" src="astrae/tl-guard.png" alt="방어 태세">
+  <div class="ab hp" id="hp"><i class="next"></i><i id="hpFill"></i><b id="hpTx">88080 / 88080</b></div>
+  <p class="ab hp-x" id="hpX">x40</p>
+  <div class="ab hp-line"></div>
+  <div class="ab tl" id="tl"><div class="line"></div><span class="end">✦</span><span class="cur" id="tlCur"></span></div>
+  <div class="ab rnd" id="rnd"><span class="r" id="rndTx">1R</span><span class="p" id="phTx">ACTION</span></div>
+  <p class="ab toast" id="toast"></p>
+
+  <!-- 파티 -->
+  <div class="ab counter-fx" id="ctrFx"></div>
+  <div class="ab php" id="php"><i id="phpFill"></i></div>
+
+  <!-- AP -->
+  <div class="ab ap-stars" id="apStars"></div>
+  <div class="ab ap-num" id="apBox"><small>AP</small><b id="apTx">5</b></div>
+
+  <!-- 행동 버튼 -->
+  <div class="ab ult-ring" id="ultRing"></div>
+  <button type="button" class="ab act b-wand" id="bWand" aria-label="기본 공격 (AP 1)"><img src="astrae/btn-wand.png" alt=""></button>
+  <button type="button" class="ab act b-ult" id="bUlt" aria-label="얼티메이트 (AP 1)"><img src="astrae/btn-ult.png" alt=""></button>
+  <button type="button" class="ab act b-gun" id="bGun" aria-label="전투 스킬 (AP 1, 쿨타임)"><img src="astrae/btn-gun.png" alt=""><span class="cd" id="gunCd"></span><span class="cdn" id="gunN"></span></button>
+  <button type="button" class="ab act b-shield" id="bShield" aria-label="카운터 (상대 공격 시 타이밍 입력)"><img src="astrae/btn-shield.png" alt=""></button>
+  <div class="ab ult-lv" id="ultLv"><span data-l="3">Ⅲ</span><span data-l="2">Ⅱ</span><span data-l="1">Ⅰ</span></div>
+
+  <div class="tip" id="tip" role="tooltip"></div>
+  <div class="hitfx" id="hitfx"></div>
+  <div class="hurt" id="hurt"></div>
+  <div class="cutin" id="cutin" aria-hidden="true"></div>
+
+  <div class="veil" id="veil" role="dialog" aria-modal="true" aria-labelledby="veilT">
+    <h2 id="veilT">일시정지</h2>
+    <p id="veilD">전투가 멈췄습니다.</p>
+    <div class="row">
+      <button type="button" id="vResume">계속하기</button>
+      <button type="button" class="sub" id="vReset">처음부터</button>
+    </div>
+  </div>
+</main>
+
+<div class="tut" id="tut" hidden>
+  <div class="tut__ring" id="tutRing"></div>
+  <div class="tut__hand" id="tutHand" hidden aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 013 0V10h.5V3.5a1.5 1.5 0 013 0V10h.5V5a1.5 1.5 0 013 0v9a7 7 0 01-7 7h-1.3a6 6 0 01-4.6-2.2L3.4 15a1.5 1.5 0 012.2-2L9 15.5z"/></svg></div>
+  <div class="tut__pop" id="tutPop">
+    <p class="tut__no"><i></i>튜토리얼 · <span id="tutNo">1 / 10</span></p>
+    <p class="tut__txt" id="tutTxt"></p>
+    <div class="tut__acts">
+      <button type="button" class="tut__skip" id="tutSkip">건너뛰기</button>
+      <button type="button" class="tut__prev" id="tutPrev">이전</button>
+      <button type="button" class="tut__next" id="tutNext">다음</button>
+    </div>
+  </div>
+</div>
+<button type="button" class="tut-open" id="tutOpen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>튜토리얼 다시 보기</button>
+
+<script>
+(function(){
+  /* ── 수치 (프로토타입 가정) ── */
+  var AP_MAX = 5, BAR = 88080, LINES = 40;
+  var DMG = { wand: 6200, gun: 15800, ult: [0, 24000, 42000, 68000], counter: 9400 };
+  var GUN_CD = 2;                 // 다른 행동 2회 뒤 재사용
+  var HIT = { hit: 15, red: 30 }; // 출전 캐릭터 HP 감소 %
+  var WINDOW = 1100;              // 방패 입력 시간 (x1 기준)
+  // 행동 예고 : 8칸, 아이콘 위치는 원본 캡처 배치(방패·붉은 검·검 … 검)를 따른다
+  var PATTERN = ['guard', 'red', 'hit', null, 'hit', null, null, null];
+
+  var $ = function(id){ return document.getElementById(id); };
+  var stage = $('stage'), tl = $('tl'), tlCur = $('tlCur');
+  var BTN = { wand: 'bWand', gun: 'bGun', ult: 'bUlt', shield: 'bShield' };
+  var S, T = { active: false, need: null, onDone: null, onTiming: null };   // T : 튜토리얼 진행 상태
+
+  function reset(){
+    if(S && S.timing) closeTiming(false);
+    S = { ap: AP_MAX, hp: BAR, lines: LINES, round: 1, ult: 0, gunCd: 0, guard: false, pos: 0, party: 100,
+          speed: 1, busy: false, paused: false, over: false, timing: null };
+    $('spdTx').textContent = 'x1';
+    buildTimeline(); render();
+    $('veil').classList.remove('on');
+  }
+
+  /* 행동 예고 */
+  function buildTimeline(){
+    [].slice.call(tl.querySelectorAll('.slot')).forEach(function(n){ n.remove(); });
+    PATTERN.forEach(function(k, i){
+      if(!k) return;
+      var im = document.createElement('img');
+      im.className = 'slot'; im.dataset.i = i;
+      im.src = 'astrae/tl-' + k + '.png'; im.alt = '';
+      im.style.left = (i / PATTERN.length * 100 + 100 / PATTERN.length / 2) + '%';
+      tl.appendChild(im);
+    });
+  }
+
+  function render(){
+    // AP
+    var st = $('apStars'); st.textContent = '';
+    for(var i = 0; i < AP_MAX; i++){
+      var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      s.setAttribute('viewBox', '0 0 24 24');
+      if(i >= S.ap) s.setAttribute('class', 'off');
+      s.innerHTML = '<path d="M12 1l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 16.6 5.7 20.3l1.7-7.1L2 8.5l7.1-.6z"/>';
+      st.appendChild(s);
+    }
+    $('apTx').textContent = S.ap;
+    // 적 HP
+    $('hpFill').style.width = (S.hp / BAR * 100) + '%';
+    $('hpTx').textContent = S.hp + ' / ' + BAR;
+    $('hpX').textContent = 'x' + S.lines;
+    $('guard').classList.toggle('on', S.guard);
+    // 라운드 · 행동 예고
+    $('rndTx').textContent = S.round + 'R';
+    tlCur.style.left = (S.pos / PATTERN.length * 100 + 100 / PATTERN.length / 2) + '%';
+    [].slice.call(tl.querySelectorAll('.slot')).forEach(function(n){
+      n.classList.toggle('done', +n.dataset.i < S.pos);
+      n.classList.toggle('next', +n.dataset.i === S.pos);
+    });
+    // 파티
+    $('phpFill').style.width = S.party + '%';
+    // 버튼 상태
+    var noAp = S.ap < 1;
+    dis('bWand', noAp); dis('bUlt', noAp || S.ult < 1); dis('bGun', noAp || S.gunCd > 0);
+    dis('bShield', !S.timing);
+    var hitNow = S.timing && S.timing.k === 'hit', redNow = S.timing && S.timing.k === 'red';
+    $('bShield').classList.toggle('timing', !!hitNow);
+    $('bShield').classList.toggle('blocked', !!redNow);
+    // 하이라이트 : 누를 수 있는 버튼(옅은 링) + 지금 누르면 좋은 버튼(금빛)
+    var hint = null;
+    if(hitNow) hint = 'bShield';
+    else if(!noAp && !S.busy && S.ult === 3) hint = 'bUlt';
+    if(T.active) hint = T.need ? BTN[T.need] : null;
+    ['bWand', 'bGun', 'bUlt', 'bShield'].forEach(function(id){
+      var usable = $(id).getAttribute('aria-disabled') !== 'true' && (id === 'bShield' ? !!hitNow : !S.busy);
+      $(id).classList.toggle('usable', usable && !(T.active && BTN[T.need] !== id));
+      $(id).classList.toggle('hint', hint === id);
+    });
+    $('bGun').classList.toggle('ready', S.gunCd === 0);
+    $('gunCd').style.setProperty('--p', S.gunCd / GUN_CD * 100);
+    $('gunN').textContent = S.gunCd || '';
+    $('bUlt').classList.toggle('charged', S.ult >= 1);
+    $('ultRing').style.setProperty('--g', S.ult / 3 * 100);
+    [].slice.call($('ultLv').children).forEach(function(n){ n.classList.toggle('on', +n.dataset.l <= S.ult); });
+  }
+  function dis(id, v){ $(id).setAttribute('aria-disabled', v ? 'true' : 'false'); }
+
+  /* 표시 도우미 */
+  var tTimer;
+  function toast(msg, ms){
+    var t = $('toast'); t.textContent = msg; t.classList.add('on');
+    clearTimeout(tTimer); tTimer = setTimeout(function(){ t.classList.remove('on'); }, ms || 1300);
+  }
+  function pop(txt, cls, x, y){
+    var d = document.createElement('span');
+    d.className = 'dmg ' + cls; d.textContent = txt;
+    d.style.left = x + '%'; d.style.top = y + '%';
+    d.style.animationDuration = (0.9 / S.speed) + 's';
+    stage.appendChild(d);
+    setTimeout(function(){ d.remove(); }, 1000 / S.speed + 50);
+  }
+  function fx(id, cls){ cls = cls || 'on'; var e = $(id); e.classList.remove(cls); void e.offsetWidth; e.classList.add(cls); }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms / S.speed); }); }
+  function phase(t){ $('phTx').textContent = t; }
+
+  /* ── 적에게 피해 ── */
+  function damage(n, crit){
+    if(S.guard){ n = Math.round(n / 2); S.guard = false; pop('GUARD', 'info', 66.5, 30); }
+    fx('hitfx');
+    pop(n.toLocaleString(), crit ? 'crit' : 'en', 66.5 + (Math.random() * 4 - 2), 38);
+    S.hp -= n;
+    while(S.hp <= 0 && S.lines > 1){ S.lines--; S.hp += BAR; }
+    if(S.hp <= 0){ S.hp = 0; S.over = true; }
+  }
+
+  /* ── 공격 행동 : 지팡이 · 총 · 별 ── */
+  async function act(kind){
+    if(S.busy || S.paused || S.over) return;
+    if(T.active && T.need !== kind) return;          // 튜토리얼 중에는 안내한 버튼만
+    if(S.ap < 1){ toast('AP가 부족합니다'); return; }
+    if(kind === 'gun' && S.gunCd > 0){ toast('전투 스킬 쿨타임 ' + S.gunCd); return; }
+    if(kind === 'ult' && S.ult < 1){ toast('얼티메이트 게이지가 부족합니다'); return; }
+    S.busy = true;
+    fx(BTN[kind], 'flash');
+    S.ap--;
+    if(kind !== 'gun' && S.gunCd > 0) S.gunCd--;
+
+    if(kind === 'wand'){ damage(DMG.wand); S.ult = Math.min(3, S.ult + 1); }
+    else if(kind === 'gun'){ damage(DMG.gun); S.gunCd = GUN_CD; S.ult = Math.min(3, S.ult + 1); }
+    else if(kind === 'ult'){ damage(DMG.ult[S.ult], true); pop('ULTIMATE ' + ['', 'Ⅰ', 'Ⅱ', 'Ⅲ'][S.ult], 'info', 66.5, 27); S.ult = 0; stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake'); }
+    render();
+    await wait(380);
+    if(S.over){ return finish(); }
+
+    // 행동 예고 한 칸 진행
+    S.pos++;
+    render();
+    var k = PATTERN[S.pos - 1];
+    if(k){ await enemy(k); }
+    if(S.pos >= PATTERN.length){ S.pos = 0; }
+
+    // AP 0 → 영지 선언
+    if(S.ap === 0 && !S.over){ await dominion(); }
+    S.busy = false;
+    render();
+    if(T.active && T.onDone){ var f = T.onDone; T.onDone = null; f(kind); }
+  }
+
+  /* ── 적 행동 ── */
+  async function enemy(k){
+    phase('ENEMY');
+    await wait(260);
+    if(k === 'guard'){
+      S.guard = true; pop('방어 태세', 'info', 50, 26);
+    } else {
+      toast(k === 'red' ? '붉은 공격 — 막을 수 없습니다' : '적의 공격 — 방패가 금빛으로 빛날 때 누르세요', WINDOW / S.speed);
+      var countered = await openTiming(k);
+      if(countered){
+        fx('ctrFx'); pop('COUNTER', 'crit', 9.5, 68); await wait(200); damage(DMG.counter);
+      } else {
+        S.party = Math.max(0, S.party - HIT[k]);
+        fx('hurt'); pop('-' + HIT[k] + '%', 'pl', 11, 72);
+      }
+    }
+    render();
+    await wait(420);
+    phase('ACTION');
+    if(S.party === 0){ S.over = true; finish(true); }
+  }
+
+  /* 방패 입력 시간 : 적이 공격하는 동안만 열린다 */
+  var tmTimer;
+  function openTiming(k){
+    return new Promise(function(resolve){
+      S.timing = { k: k, done: resolve };
+      render();
+      if(T.active && k === 'hit' && T.onTiming){
+        T.onTiming();                                   // 튜토리얼 : 방패를 누를 때까지 기다린다
+      } else {
+        tmTimer = setTimeout(function(){ closeTiming(false); }, WINDOW / S.speed);
+      }
+    });
+  }
+  function closeTiming(ok){
+    clearTimeout(tmTimer);
+    var t = S.timing; if(!t) return;
+    S.timing = null;
+    render();
+    t.done(ok);
+  }
+  function shield(){
+    if(S.paused || S.over) return;
+    if(!S.timing){ toast('상대가 공격할 때, 방패가 금빛으로 빛나면 누르세요'); return; }
+    fx('bShield', 'flash');
+    if(S.timing.k === 'red'){ pop('카운터 불가', 'pl', 9.5, 64); closeTiming(false); return; }
+    closeTiming(true);
+  }
+
+  async function dominion(){
+    phase('領地宣言');
+    var c = $('cutin');
+    c.style.animationDuration = (1.9 / S.speed) + 's';
+    fx('cutin');
+    await wait(1900);
+    S.ap = AP_MAX; S.round++;
+    pop('AP +' + AP_MAX, 'info', 66.5, 82);
+    phase('ACTION');
+  }
+
+  function finish(lose){
+    S.busy = false; render();
+    $('veilT').textContent = lose ? '전투 불능' : '전투 승리';
+    $('veilD').textContent = lose ? '출전 캐릭터의 HP가 0이 되었습니다.' : '리빙 아머를 쓰러뜨렸습니다.';
+    $('vResume').hidden = true;
+    $('veil').classList.add('on');
+  }
+
+  /* ── 입력 ── */
+  $('bWand').addEventListener('click', function(){ act('wand'); });
+  $('bGun').addEventListener('click', function(){ act('gun'); });
+  $('bUlt').addEventListener('click', function(){ act('ult'); });
+  $('bShield').addEventListener('click', shield);
+  $('bAuto').addEventListener('click', function(){ toast('자동 전투는 조건 달성 후 해금됩니다'); });
+  $('bSpeed').addEventListener('click', function(){ S.speed = S.speed === 1 ? 2 : 1; $('spdTx').textContent = 'x' + S.speed; toast('배속 x' + S.speed); });
+  $('bPause').addEventListener('click', function(){
+    S.paused = true; $('veilT').textContent = '일시정지'; $('veilD').textContent = '전투가 멈췄습니다.';
+    $('vResume').hidden = false; $('veil').classList.add('on');
+  });
+  $('vResume').addEventListener('click', function(){ S.paused = false; $('veil').classList.remove('on'); });
+  $('vReset').addEventListener('click', reset);
+  document.addEventListener('keydown', function(e){
+    if(!$('tut').hidden && !(T.active && T.need)) return;
+    if(e.key === '4' || e.key === ' '){ e.preventDefault(); if(!T.active || T.need === 'shield') shield(); return; }
+    var m = { '1': 'wand', '2': 'gun', '3': 'ult' }[e.key];
+    if(m) act(m);
+  });
+
+  /* ── 툴팁 : 마우스를 올리거나 키보드로 포커스하면 역할을 보여 준다 ── */
+  var TIPS = {
+    bWand:   ['기본 공격', 'AP 1', '딜 및 얼티메이트 게이지 충전'],
+    bGun:    ['전투 스킬', 'AP 1', '큰 딜 및 얼티메이트 게이지 충전. 사용 후 쿨타임 2 (다른 행동 2회 뒤 다시 사용)'],
+    bUlt:    ['얼티메이트', 'AP 1', '게이지 단계(Ⅰ·Ⅱ·Ⅲ)가 높을수록 큰 딜. 사용하면 게이지가 비워짐'],
+    bShield: ['카운터', 'AP 없음', '상대 공격 시 타이밍에 맞춰 누름. 금빛으로 빛날 때 누르면 막고 반격. 붉은 공격은 막을 수 없음'],
+    bPause:  ['일시정지', '', '전투를 멈추고 처음부터 다시 할 수 있음'],
+    bAuto:   ['자동 전투', '잠김', '조건 달성 후 해금'],
+    bSpeed:  ['배속', '', '연출 속도 x1 / x2 전환'],
+    apBox:   ['AP', '최대 5', '행동 1회에 1칸 소모. 모두 쓰면 영지 선언으로 다시 채워짐'],
+    tl:      ['행동 예고', '', '행동할 때마다 한 칸 진행. 방패: 방어 태세 · 검: 일반 공격 · 붉은 검: 막을 수 없는 공격']
+  };
+  var tip = $('tip');
+  function showTip(e){
+    var id = e.currentTarget.id, d = TIPS[id]; if(!d) return;
+    tip.innerHTML = '<b>' + d[0] + (d[1] ? '<em>' + d[1] + '</em>' : '') + '</b><p>' + d[2] + '</p>';
+    tip.classList.add('on');
+    var sr = stage.getBoundingClientRect(), r = e.currentTarget.getBoundingClientRect();
+    var tw = tip.offsetWidth, th = tip.offsetHeight, gap = sr.width * .006;
+    var left = r.left - sr.left + r.width / 2 - tw / 2;
+    var top = r.top - sr.top - th - gap;
+    if(top < gap) top = r.bottom - sr.top + gap;                 // 위쪽이 모자라면 아래로
+    left = Math.max(gap, Math.min(sr.width - tw - gap, left));   // 무대 밖으로 나가지 않게
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function hideTip(){ tip.classList.remove('on'); }
+  Object.keys(TIPS).forEach(function(id){
+    var n = $(id);
+    n.addEventListener('mouseenter', showTip); n.addEventListener('focus', showTip);
+    n.addEventListener('mouseleave', hideTip); n.addEventListener('blur', hideTip);
+  });
+
+  reset();
+
+  /* ── 튜토리얼 : 직접 눌러 보며 진행 ──
+     need 가 있는 단계는 해당 버튼을 눌러야 넘어가고, 없는 단계는 [다음]으로 넘어간다.
+     적이 일반 공격을 하면 그 자리에서 방패 안내가 끼어들고, 방패를 누를 때까지 기다린다. */
+  var STEPS = [
+    { sel: '#apBox', txt: '리빙 아머와의 전투입니다. 공격 버튼은 누를 때마다 <b>AP 1칸</b>을 씁니다. 지금 AP는 5칸입니다.' },
+    { sel: '#bWand', need: 'wand', txt: '<b>지팡이</b>를 눌러 보세요. <b>딜 및 얼티메이트 게이지 충전</b> 버튼입니다.' },
+    { sel: '#tl', txt: '행동할 때마다 <b>행동 예고</b>가 한 칸씩 진행됩니다. 방금 적이 <b>방어 태세(방패)</b>를 잡아 다음 피해가 절반이 됩니다.' },
+    { sel: '#bGun', need: 'gun', txt: '<b>총</b>을 눌러 전투 스킬을 써 보세요. 딜이 크지만 쓰고 나면 <b>쿨타임 2</b>가 붙습니다.' },
+    { sel: '#php', txt: '방금은 <b>붉은 공격</b>이라 방패로 막을 수 없어 출전 캐릭터의 HP가 줄었습니다.' },
+    { sel: '#bShield', txt: '<b>방패</b>는 AP를 쓰지 않습니다. <b>상대가 공격할 때 금빛으로 빛나면</b> 타이밍에 맞춰 누르세요. 막고 반격합니다. 다음 예고가 일반 공격입니다.' },
+    { sel: '#bWand', need: 'wand', txt: '<b>지팡이</b>로 공격해 보세요. 곧 적이 공격해 옵니다.' },
+    { sel: '#ultLv', txt: '공격을 거듭해 얼티메이트 게이지가 <b>Ⅲ단계</b>까지 찼습니다. 단계가 높을수록 딜이 커집니다.' },
+    { sel: '#bUlt', need: 'ult', txt: '게이지가 가득 차 별 버튼이 빛납니다. <b>Ⅲ단계 얼티메이트</b>를 써 보세요.' },
+    { sel: '#bWand', need: 'wand', txt: '마지막 AP 1칸으로 <b>지팡이</b>를 눌러 보세요. 적의 공격이 오면 방패도 잊지 마세요.' },
+    { sel: '#apBox', txt: 'AP를 모두 쓰면 <b>영지 선언</b> 컷인과 함께 AP가 다시 채워지고 라운드가 넘어갑니다. 이제 자유롭게 싸워 보세요. 버튼에 마우스를 올리면 설명이 나옵니다.' }
+  ];
+  var SHIELD_NOW = { sel: '#bShield', need: 'shield', txt: '적이 공격합니다! <b>금빛으로 빛나는 방패</b>를 지금 누르세요.' };
+  var el = $('tut'), ring = $('tutRing'), popEl = $('tutPop'), no = $('tutNo'), txt = $('tutTxt'),
+      next = $('tutNext'), skip = $('tutSkip'), hand = $('tutHand'), idx = 0, cur = null;
+  $('tutPrev').hidden = true;                           // 전투는 되돌릴 수 없으므로 [이전] 없음
+
+  function place(step){
+    var t = document.querySelector(step.sel); if(!t) return;
+    var r = t.getBoundingClientRect(), pad = 6;
+    ring.style.top = (r.top - pad) + 'px'; ring.style.left = (r.left - pad) + 'px';
+    ring.style.width = (r.width + pad * 2) + 'px'; ring.style.height = (r.height + pad * 2) + 'px';
+    ring.style.borderRadius = step.need ? '50%' : '10px';
+    var pw = Math.min(360, window.innerWidth - 32), ph = popEl.offsetHeight || 180;
+    var top = r.bottom + 14, left = r.left + r.width / 2 - pw / 2;
+    if(top + ph > window.innerHeight - 12) top = Math.max(12, r.top - ph - 14);
+    if(left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
+    popEl.style.top = Math.max(12, top) + 'px'; popEl.style.left = Math.max(12, left) + 'px';
+    hand.hidden = !step.need;
+    if(step.need){ hand.style.left = (r.left + r.width * .62) + 'px'; hand.style.top = (r.top + r.height * .55) + 'px'; }
+  }
+  function paint(step){
+    cur = step;
+    no.textContent = (idx + 1) + ' / ' + STEPS.length;
+    txt.innerHTML = step.txt + (step.need ? '<span class="tut__do">빛나는 버튼을 눌러 보세요</span>' : '');
+    next.hidden = !!step.need;
+    next.textContent = idx === STEPS.length - 1 ? '완료' : '다음';
+    el.classList.toggle('is-act', !!step.need);         // 버튼 단계에서는 오버레이를 통과해 누를 수 있다
+    T.need = step.need || null;
+    hideTip();
+    render();
+    place(step);
+    if(!step.need) next.focus();
+  }
+  function show(n){
+    idx = n;
+    var s = STEPS[idx];
+    T.onDone = s.need ? function(){ setTimeout(function(){ show(idx + 1); }, 350); } : null;
+    // 적이 일반 공격하면 방패 안내를 끼워 넣고, 누르고 나면 원래 단계로 돌아온다
+    T.onTiming = function(){
+      paint(SHIELD_NOW);
+      var done = S.timing.done;
+      S.timing.done = function(ok){ done(ok); paint(s); };
+    };
+    paint(s);
+  }
+  function open(){
+    reset();
+    T.active = true;
+    el.hidden = false;
+    show(0);
+  }
+  function close(){
+    el.hidden = true; hand.hidden = true;
+    T.active = false; T.need = null; T.onDone = null; T.onTiming = null;
+    if(S.timing) closeTiming(false);
+    render();
+  }
+  $('tutOpen').addEventListener('click', open);
+  next.addEventListener('click', function(){ idx === STEPS.length - 1 ? close() : show(idx + 1); });
+  skip.addEventListener('click', close);
+
+  // 튜토리얼 중에는 안내한 버튼 말고는 누를 수 없다 (일시정지·배속 포함)
+  stage.addEventListener('click', function(e){
+    if(!T.active) return;
+    var ok = T.need && $(BTN[T.need]).contains(e.target);
+    if(!ok){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  document.addEventListener('keydown', function(e){
+    if(el.hidden) return;
+    if(e.key === 'Escape') close();
+    else if(e.key === 'ArrowRight' && !T.need) next.click();
+  });
+  window.addEventListener('resize', function(){ if(!el.hidden && cur) place(cur); });
+  window.addEventListener('message', function(e){ if(e.data === 'tut:restart') open(); });
+
+  // 열 때마다 튜토리얼부터 시작
+  setTimeout(open, 420);
+})();
+</script>
+</body>
+</html>
