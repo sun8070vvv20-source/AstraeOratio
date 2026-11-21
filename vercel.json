@@ -1,0 +1,59 @@
+{
+  "redirects": [
+    {
+      "source": "/portfolio",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/portfolio/",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/portfolio/index.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/application",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/application/",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/application/index.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/index_636.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/_preview_modal.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/portfolio.pdf",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/지원서_박세훈.pdf",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/%EC%A7%80%EC%9B%90%EC%84%9C_%EB%B0%95%EC%84%B8%ED%9B%88.pdf",
+      "destination": "/",
+      "permanent": false
+    }
+  ]
+}
